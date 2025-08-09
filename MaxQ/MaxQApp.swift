@@ -22,6 +22,20 @@ struct MaxQApp: App {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, coreDataManager.viewContext)
+                // Inject LLM services for coaching insights  
+                .environment(\.llmService, LocalLLMService())
+                .environment(\.llmResultStore, (try? JSONLLMResultStore()) ?? {
+                    // Fallback to in-memory store - create inline to avoid complex initialization
+                    final class InMemoryStore: LLMResultStore {
+                        private var completions: [LLMCompletion] = []
+                        func fetchCompletions(for sessionId: UUID) async throws -> [LLMCompletion] { completions.filter { $0.relatedId == sessionId } }
+                        func save(completion: LLMCompletion) async throws { completions.append(completion) }
+                        func purgeOld(maxAgeDays: Int) async throws { /* no-op for memory store */ }
+                        func fetchWarmup(for dayId: UUID) async throws -> LLMCompletion? { completions.first { $0.type == .warmupSuggestion && $0.relatedId == dayId } }
+                        func fetchProgressAnalysis() async throws -> LLMCompletion? { completions.first { $0.type == .progressAnalysis } }
+                    }
+                    return InMemoryStore()
+                }())
                 .onAppear {
                     // Perform seed data initialization on app launch
                     let seedManager = SeedDataManager(context: coreDataManager.viewContext)
