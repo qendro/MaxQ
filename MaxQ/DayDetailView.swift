@@ -226,7 +226,7 @@ struct DayDetailView: View {
 }
 
 #Preview {
-    let context = CoreDataManager.preview.viewContext
+    let context = Database.preview.viewContext
     let sampleDay = WorkoutDay(context: context)
     sampleDay.id = UUID()
     sampleDay.name = "Push Day"

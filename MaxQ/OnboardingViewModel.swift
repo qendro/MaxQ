@@ -12,11 +12,16 @@ final class OnboardingViewModel: ObservableObject {
     }
     
     func loadPrograms() {
-        programs = repository.fetchPrograms()
-        if let classic = programs.first(where: { ($0.name ?? "").localizedCaseInsensitiveContains("classic") }) {
-            selectedProgramId = classic.id
-        } else {
-            selectedProgramId = programs.first?.id
+        Task {
+            let fetchedPrograms = await repository.fetchPrograms()
+            await MainActor.run {
+                programs = fetchedPrograms
+                if let classic = programs.first(where: { ($0.name ?? "").localizedCaseInsensitiveContains("classic") }) {
+                    selectedProgramId = classic.id
+                } else {
+                    selectedProgramId = programs.first?.id
+                }
+            }
         }
     }
     

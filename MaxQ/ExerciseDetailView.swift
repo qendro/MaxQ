@@ -142,7 +142,7 @@ struct ExerciseDetailView: View {
 }
 
 #Preview {
-    let context = CoreDataManager.preview.viewContext
+    let context = Database.preview.viewContext
     let sampleDay = WorkoutDay(context: context)
     sampleDay.id = UUID(); sampleDay.name = "Push Day"; sampleDay.isActive = true
     let ex = Exercise(context: context)

@@ -78,35 +78,73 @@ class LogViewModel: ObservableObject {
         return Array(grouped.values).sorted { $0.date > $1.date }
     }
     
-    /// Formats workout logs as readable text
+    /// Formats workout logs as readable text in Notes app style
     private func formatLogsAsText(_ workouts: [(date: Date, day: String, exercises: [(name: String, sets: [SetData])])]) -> String {
         var text = ""
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MM/dd/yyyy"
+        dateFormatter.dateFormat = "MM/dd/yy"
         
         // Sort workouts by date ascending (oldest first)
         let sortedWorkouts = workouts.sorted { $0.date < $1.date }
         
         for workout in sortedWorkouts {
-            text += "═══ \(dateFormatter.string(from: workout.date)) - \(workout.day) ═══\n"
+            text += "\(dateFormatter.string(from: workout.date)) - \(workout.day)\n"
             
             for exercise in workout.exercises {
                 let shortName = shortenExerciseName(exercise.name)
-                let setsText = exercise.sets.compactMap { set in
-                    if let weight = set.weight, let reps = set.reps, weight > 0, reps > 0 {
-                        return "\(Int(weight))×\(reps)"
-                    }
-                    return nil
-                }.joined(separator: " • ")
+                let formattedSets = formatSetsInNewStyle(exercise.sets)
                 
-                if !setsText.isEmpty {
-                    text += "  \(shortName): \(setsText)\n"
+                if !formattedSets.isEmpty {
+                    text += "- \(shortName): \(formattedSets)\n"
                 }
             }
             text += "\n"
         }
         
         return text
+    }
+    
+    /// Formats sets in the new style: weight: reps,reps,reps or weight1: reps; weight2: reps,reps
+    private func formatSetsInNewStyle(_ sets: [SetData]) -> String {
+        var result = ""
+        var currentWeight: Int?
+        var repsForCurrentWeight: [String] = []
+        
+        for set in sets {
+            guard let weight = set.weight, let reps = set.reps, weight > 0, reps > 0 else { continue }
+            
+            let weightInt = Int(weight)
+            
+            if currentWeight == nil {
+                currentWeight = weightInt
+            }
+            
+            if weightInt == currentWeight {
+                // Same weight, add reps to current group
+                repsForCurrentWeight.append("\(reps)")
+            } else {
+                // Different weight, write out current group and start new one
+                if !repsForCurrentWeight.isEmpty {
+                    if !result.isEmpty {
+                        result += "; "
+                    }
+                    result += "\(currentWeight!): \(repsForCurrentWeight.joined(separator: ","))"
+                }
+                
+                currentWeight = weightInt
+                repsForCurrentWeight = ["\(reps)"]
+            }
+        }
+        
+        // Don't forget the last group
+        if !repsForCurrentWeight.isEmpty, let weight = currentWeight {
+            if !result.isEmpty {
+                result += "; "
+            }
+            result += "\(weight): \(repsForCurrentWeight.joined(separator: ","))"
+        }
+        
+        return result
     }
     
     /// Converts exercise names to more concise versions
@@ -218,26 +256,38 @@ class LogViewModel: ObservableObject {
                 continue
             }
             
-            // Try to parse header line: "═══ MM/dd/yyyy - Day ═══"
-            if trimmed.hasPrefix("═══") && trimmed.hasSuffix("═══") {
-                let headerContent = String(trimmed.dropFirst(4).dropLast(4)).trimmingCharacters(in: .whitespacesAndNewlines)
-                let components = headerContent.components(separatedBy: " - ")
+            // Try to parse header line: "MM/dd/yy - Day"
+            if trimmed.contains(" - ") && !trimmed.hasPrefix("-") {
+                let components = trimmed.components(separatedBy: " - ")
                 
-                if components.count == 2,
-                   let date = dateFormatter.date(from: components[0].trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    currentDate = date
-                    currentDay = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                if components.count == 2 {
+                    let dateString = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Try both MM/dd/yy and MM/dd/yyyy formats
+                    var parsedDate: Date?
+                    
+                    let shortFormatter = DateFormatter()
+                    shortFormatter.dateFormat = "MM/dd/yy"
+                    parsedDate = shortFormatter.date(from: dateString)
+                    
+                    if parsedDate == nil {
+                        parsedDate = dateFormatter.date(from: dateString)
+                    }
+                    
+                    if let date = parsedDate {
+                        currentDate = date
+                        currentDay = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
                 }
                 continue
             }
             
-            // Try to parse exercise line: "  ExerciseName: 185×3 • 225×8"
-            if trimmed.hasPrefix("  "), let colonIndex = trimmed.firstIndex(of: ":") {
+            // Try to parse exercise line: "- ExerciseName: 225: 7,5,5"
+            if trimmed.hasPrefix("- "), let colonIndex = trimmed.firstIndex(of: ":") {
                 let exerciseName = String(trimmed[trimmed.index(trimmed.startIndex, offsetBy: 2)..<colonIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
                 let setsString = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 
                 let expandedName = expandExerciseName(exerciseName)
-                let sets = try parseSets(from: setsString)
+                let sets = try parseNewFormatSets(from: setsString)
                 currentExercises.append((name: expandedName, sets: sets))
             }
         }
@@ -286,7 +336,45 @@ class LogViewModel: ObservableObject {
         return reverseMap[lowercased] ?? shortName
     }
     
-    /// Parses sets string like "185×3 • 225×8 • 225×8"
+    /// Parses sets in new format like "225: 7,5,5" or "50: 10; 60: 7,7,7"
+    private func parseNewFormatSets(from text: String) throws -> [SetData] {
+        var sets: [SetData] = []
+        
+        // Split by semicolon for different weights
+        let weightGroups = text.components(separatedBy: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        
+        for weightGroup in weightGroups {
+            guard !weightGroup.isEmpty else { continue }
+            
+            // Parse each weight group: "225: 7,5,5"
+            let parts = weightGroup.components(separatedBy: ":")
+            guard parts.count == 2,
+                  let weight = Double(parts[0].trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                throw LogParsingError.invalidSetFormat(weightGroup)
+            }
+            
+            // Parse reps: "7,5,5" or "15/10, 15/10, 13,8"
+            let repsString = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let repsArray = repsString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            
+            for repString in repsArray {
+                guard !repString.isEmpty else { continue }
+                
+                // Handle compound reps like "15/10" (take the first number)
+                let cleanRepString = repString.components(separatedBy: "/")[0]
+                
+                guard let reps = Int16(cleanRepString.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                    throw LogParsingError.invalidSetFormat(repString)
+                }
+                
+                sets.append(SetData(weight: weight, reps: reps))
+            }
+        }
+        
+        return sets
+    }
+    
+    /// Parses sets string like "185×3 • 225×8 • 225×8" (legacy format)
     private func parseSets(from text: String) throws -> [SetData] {
         // Handle both "•" and "," separators for backwards compatibility
         let separators = [" • ", ", ", ","]

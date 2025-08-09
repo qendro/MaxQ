@@ -401,5 +401,5 @@ struct WorkoutDayRow: View {
 
 #Preview {
     WorkoutDaysListView()
-        .environment(\.managedObjectContext, CoreDataManager.preview.viewContext)
+        .environment(\.managedObjectContext, Database.preview.viewContext)
 }

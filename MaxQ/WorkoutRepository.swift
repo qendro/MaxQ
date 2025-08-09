@@ -12,26 +12,26 @@ import CoreData
 
 protocol WorkoutRepositoryProtocol {
     // Program operations
-    func fetchPrograms() -> [Program]
-    func fetchProgram(by id: UUID) -> Program?
+    func fetchPrograms() async -> [Program]
+    func fetchProgram(by id: UUID) async -> Program?
     
     // WorkoutDay operations
-    func fetchActiveDays(for program: Program) -> [WorkoutDay]
-    func createDay(name: String, program: Program) -> WorkoutDay
-    func updateDay(_ day: WorkoutDay)
-    func softDeleteDay(_ day: WorkoutDay)
+    func fetchActiveDays(for program: Program) async -> [WorkoutDay]
+    func createDay(name: String, program: Program) async -> WorkoutDay
+    func updateDay(_ day: WorkoutDay) async
+    func softDeleteDay(_ day: WorkoutDay) async
     
     // Exercise operations
-    func fetchExercisesForDay(_ day: WorkoutDay) -> [Exercise]
-    func createExercise(name: String, day: WorkoutDay, isBaseline: Bool) -> Exercise
-    func updateExercise(_ exercise: Exercise)
-    func deleteExercise(_ exercise: Exercise)
+    func fetchExercisesForDay(_ day: WorkoutDay) async -> [Exercise]
+    func createExercise(name: String, day: WorkoutDay, isBaseline: Bool) async -> Exercise
+    func updateExercise(_ exercise: Exercise) async
+    func deleteExercise(_ exercise: Exercise) async
     
     // ExerciseLog operations
-    func fetchTodaysLog(for exercise: Exercise) -> ExerciseLog?
-    func createOrUpdateTodaysLog(for exercise: Exercise, sets: [(weight: Double?, reps: Int16?)]) -> ExerciseLog
-    func fetchRecentLogs(for exercise: Exercise, limit: Int) -> [ExerciseLog]
-    func fetchRecentLogs(for exercise: Exercise, excludingToday: Bool, limit: Int) -> [ExerciseLog]
+    func fetchTodaysLog(for exercise: Exercise) async -> ExerciseLog?
+    func createOrUpdateTodaysLog(for exercise: Exercise, sets: [(weight: Double?, reps: Int16?)]) async -> ExerciseLog
+    func fetchRecentLogs(for exercise: Exercise, limit: Int) async -> [ExerciseLog]
+    func fetchRecentLogs(for exercise: Exercise, excludingToday: Bool, limit: Int) async -> [ExerciseLog]
 }
 
 // MARK: - Date Utilities
@@ -51,40 +51,48 @@ extension Date {
 
 // MARK: - Concrete Repository Implementation
 
-class WorkoutRepository: WorkoutRepositoryProtocol {
-    private let context: NSManagedObjectContext
+final class WorkoutRepository: WorkoutRepositoryProtocol {
+    private let database: Database
     
-    init(context: NSManagedObjectContext) {
-        self.context = context
+    init(database: Database = .shared) {
+        self.database = database
+    }
+    
+    private var context: NSManagedObjectContext {
+        database.viewContext
     }
     
     // MARK: - Program Operations
     
-    func fetchPrograms() -> [Program] {
-        let request: NSFetchRequest<Program> = Program.fetchRequest()
-        request.sortDescriptors = [
-            NSSortDescriptor(keyPath: \Program.isPreloaded, ascending: false),
-            NSSortDescriptor(keyPath: \Program.createdAt, ascending: true)
-        ]
-        
-        do {
-            return try context.fetch(request)
-        } catch {
-            print("Error fetching programs: \(error)")
-            return []
+    func fetchPrograms() async -> [Program] {
+        await context.perform {
+            let request: NSFetchRequest<Program> = Program.fetchRequest()
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \Program.isPreloaded, ascending: false),
+                NSSortDescriptor(keyPath: \Program.createdAt, ascending: true)
+            ]
+            
+            do {
+                return try self.context.fetch(request)
+            } catch {
+                print("Error fetching programs: \(error)")
+                return []
+            }
         }
     }
     
-    func fetchProgram(by id: UUID) -> Program? {
-        let request: NSFetchRequest<Program> = Program.fetchRequest()
-        request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        request.fetchLimit = 1
-        
-        do {
-            return try context.fetch(request).first
-        } catch {
-            print("Error fetching program by id: \(error)")
-            return nil
+    func fetchProgram(by id: UUID) async -> Program? {
+        await context.perform {
+            let request: NSFetchRequest<Program> = Program.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            request.fetchLimit = 1
+            
+            do {
+                return try self.context.fetch(request).first
+            } catch {
+                print("Error fetching program by id: \(error)")
+                return nil
+            }
         }
     }
     
@@ -295,14 +303,14 @@ class WorkoutRepository: WorkoutRepositoryProtocol {
 // MARK: - Repository Factory
 
 extension WorkoutRepository {
-    /// Creates a repository instance using the shared Core Data context
+    /// Creates a repository instance using the shared Database
     static var shared: WorkoutRepository {
-        return WorkoutRepository(context: CoreDataManager.shared.viewContext)
+        return WorkoutRepository(database: Database.shared)
     }
     
     /// Creates a repository instance for previews using the preview context
     @MainActor
     static var preview: WorkoutRepository {
-        return WorkoutRepository(context: CoreDataManager.preview.viewContext)
+        return WorkoutRepository(database: Database.preview)
     }
 }

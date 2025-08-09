@@ -57,12 +57,17 @@ struct SettingsView: View {
     }
     
     private func loadPrograms() {
-        programs = repository.fetchPrograms()
-        if let saved = UserDefaults.standard.string(forKey: "activeProgram"),
-           let id = UUID(uuidString: saved) {
-            selectedProgramId = id
-        } else {
-            selectedProgramId = programs.first?.id
+        Task {
+            let fetchedPrograms = await repository.fetchPrograms()
+            await MainActor.run {
+                programs = fetchedPrograms
+                if let saved = UserDefaults.standard.string(forKey: "activeProgram"),
+                   let id = UUID(uuidString: saved) {
+                    selectedProgramId = id
+                } else {
+                    selectedProgramId = programs.first?.id
+                }
+            }
         }
     }
 
@@ -71,7 +76,7 @@ struct SettingsView: View {
         // This is sufficient to meet MVP optional requirement hook
         // Real UI share omitted to keep changes minimal
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("logs.csv")
-        let context = CoreDataManager.shared.viewContext
+        let context = Database.shared.viewContext
         let request: NSFetchRequest<ExerciseLog> = ExerciseLog.fetchRequest()
         do {
             let logs = try context.fetch(request)

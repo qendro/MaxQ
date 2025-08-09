@@ -7,18 +7,18 @@
 
 import CoreData
 
-/// CoreDataManager singleton for managing the Core Data stack with lightweight migration support
-class CoreDataManager {
-    static let shared = CoreDataManager()
+/// Database actor for managing the Core Data stack with lightweight migration support and thread safety
+actor Database {
+    static let shared = Database()
     
     @MainActor
-    static let preview: CoreDataManager = {
-        let manager = CoreDataManager(inMemory: true)
+    static let preview: Database = {
+        let database = Database(inMemory: true)
         // Add preview data if needed for SwiftUI previews
-        return manager
+        return database
     }()
     
-    lazy var persistentContainer: NSPersistentContainer = {
+    nonisolated lazy var persistentContainer: NSPersistentContainer = {
         let container = NSPersistentContainer(name: "MaxQ")
         
         if inMemory {
@@ -52,11 +52,11 @@ class CoreDataManager {
         self.inMemory = inMemory || uiTestInMemory
     }
     
-    var viewContext: NSManagedObjectContext {
+    nonisolated var viewContext: NSManagedObjectContext {
         return persistentContainer.viewContext
     }
     
-    func save() {
+    func save() async {
         let context = persistentContainer.viewContext
         
         if context.hasChanges {
@@ -78,6 +78,6 @@ struct PersistenceController {
     let container: NSPersistentContainer
     
     init() {
-        self.container = CoreDataManager.shared.persistentContainer
+        self.container = Database.shared.persistentContainer
     }
 }

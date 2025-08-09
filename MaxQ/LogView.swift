@@ -35,6 +35,8 @@ struct LogView: View {
                         Button("Edit") {
                             viewModel.isEditing = true
                         }
+                        .font(DS.Typography.bodyMedium)
+                        .foregroundColor(DS.brand)
                     }
                 }
             }
@@ -56,26 +58,31 @@ struct LogView: View {
             Button("Cancel") {
                 viewModel.discardChanges()
             }
-            .foregroundColor(.red)
+            .foregroundColor(DS.brand)
             
             Spacer()
             
-            Text("Tap to edit workouts")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Text("Editing Workout Log")
+                .font(DS.Typography.captionMedium)
+                .foregroundColor(DS.textSecondary)
             
             Spacer()
             
-            Button("Save") {
+            Button("Done") {
                 viewModel.saveChanges()
             }
-            .foregroundColor(.blue)
+            .foregroundColor(DS.brand)
             .fontWeight(.semibold)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color(.systemGray6))
-        .border(Color(.separator), width: 0.5)
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.md)
+        .background(DS.card)
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundColor(DS.separator),
+            alignment: .bottom
+        )
     }
     
     private var emptyState: some View {
@@ -102,14 +109,18 @@ struct LogView: View {
         Group {
             if viewModel.isEditing {
                 TextEditor(text: $viewModel.logText)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(size: 16, weight: .regular, design: .default))
+                    .lineSpacing(2)
                     .padding()
+                    .background(Color(.systemBackground))
             } else {
                 Text(viewModel.logText)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(size: 16, weight: .regular, design: .default))
+                    .lineSpacing(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
                     .textSelection(.enabled)
+                    .background(Color(.systemBackground))
             }
         }
     }
@@ -118,7 +129,7 @@ struct LogView: View {
 // MARK: - Preview
 
 #Preview {
-    let context = CoreDataManager.preview.viewContext
+    let context = Database.preview.viewContext
     
     // Create sample data
     let program = Program(context: context)

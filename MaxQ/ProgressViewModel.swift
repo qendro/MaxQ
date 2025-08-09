@@ -8,7 +8,7 @@ final class ProgressViewModel: ObservableObject {
     @Published var streakDays: Int = 0
     
     private let context: NSManagedObjectContext
-    init(context: NSManagedObjectContext = CoreDataManager.shared.viewContext) {
+    init(context: NSManagedObjectContext = Database.shared.viewContext) {
         self.context = context
     }
     

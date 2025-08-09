@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct MaxQApp: App {
-    let coreDataManager = CoreDataManager.shared
+    let database = Database.shared
     @State private var showOnboarding: Bool = {
         // Show onboarding if no active program stored
         if let idString = UserDefaults.standard.string(forKey: "activeProgram"), UUID(uuidString: idString) != nil {
@@ -21,7 +21,7 @@ struct MaxQApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(\.managedObjectContext, coreDataManager.viewContext)
+                .environment(\.managedObjectContext, database.viewContext)
                 // Inject LLM services for coaching insights  
                 .environment(\.llmService, LocalLLMService())
                 .environment(\.llmResultStore, (try? JSONLLMResultStore()) ?? {
@@ -38,17 +38,13 @@ struct MaxQApp: App {
                 }())
                 .onAppear {
                     // Perform seed data initialization on app launch
-                    let seedManager = SeedDataManager(context: coreDataManager.viewContext)
+                    let seedManager = SeedDataManager(context: database.viewContext)
                     seedManager.seedIfNeeded()
                     #if DEBUG
-                    // UI-test hooks
-                    let args = ProcessInfo.processInfo.arguments
-                    if args.contains("-uiTestPreloadHistory") || args.contains("-debugPreloadHistory") {
-                        TestUIHooks.preloadHistoryIfPossible(context: coreDataManager.viewContext)
-                    }
+                    // Debug hooks removed - use proper seeding instead
                     #endif
                     // Always add a few weeks of sample logs once for better initial UX
-                    HistoricalSeeder.seedSampleHistoryIfNeeded(context: coreDataManager.viewContext)
+                    HistoricalSeeder.seedSampleHistoryIfNeeded(context: database.viewContext)
                 }
                 .fullScreenCover(isPresented: $showOnboarding) {
                     OnboardingView(didComplete: $showOnboarding)

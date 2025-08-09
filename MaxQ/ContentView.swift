@@ -45,5 +45,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, CoreDataManager.preview.viewContext)
+    ContentView().environment(\.managedObjectContext, Database.preview.viewContext)
 }
