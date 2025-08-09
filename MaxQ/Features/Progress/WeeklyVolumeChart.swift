@@ -24,14 +24,14 @@ struct WeeklyVolumeChart: View {
     let points: [WeekPoint]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing().sm) {
             Text("Weekly Volume")
-                .font(DS.Typography.headline)
-                .foregroundColor(DS.text)
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.primaryText)
             
             if points.isEmpty {
                 Text("No workout data yet")
-                    .foregroundColor(DS.subtle)
+                    .foregroundColor(DesignSystem.Colors.secondaryText)
                     .frame(height: 180)
                     .frame(maxWidth: .infinity)
             } else {
@@ -40,8 +40,8 @@ struct WeeklyVolumeChart: View {
                         x: .value("Week", point.start),
                         y: .value("Volume", point.volume)
                     )
-                    .foregroundStyle(DS.brand.gradient)
-                    .cornerRadius(DS.Corner.sm)
+                    .foregroundStyle(DesignSystem.Colors.accent.gradient)
+                    .cornerRadius(DesignSystem.Corners.sm)
                 }
                 .chartYAxisLabel("Volume (lbs)")
                 .chartXAxis {
