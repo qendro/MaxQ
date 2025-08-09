@@ -13,6 +13,8 @@ struct ContentView: View {
         TabView {
             WorkoutDaysListView()
                 .tabItem { Label("Home", systemImage: "list.bullet") }
+            LogView()
+                .tabItem { Label("Log", systemImage: "doc.text") }
             ProgressViewScreen()
                 .tabItem { Label("Progress", systemImage: "chart.bar.fill") }
             SettingsView()
