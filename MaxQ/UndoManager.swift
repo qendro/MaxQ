@@ -71,6 +71,7 @@ class UndoManager: ObservableObject {
 /// SwiftUI view modifier for displaying undo actions
 struct UndoViewModifier: ViewModifier {
     @ObservedObject var undoManager: UndoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     func body(content: Content) -> some View {
         content
@@ -81,8 +82,8 @@ struct UndoViewModifier: ViewModifier {
                         onUndo: undoManager.performUndo,
                         onDismiss: undoManager.cancelUndo
                     )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: undoManager.undoAction != nil)
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                    .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: undoManager.undoAction != nil)
                 }
             }
     }

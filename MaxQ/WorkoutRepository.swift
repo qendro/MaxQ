@@ -206,31 +206,31 @@ class WorkoutRepository: WorkoutRepositoryProtocol {
         // Update set data (ensure we have at most 4 sets)
         let setsToUpdate = Array(sets.prefix(4))
         
-        // Clear all sets first
-        log.set1Weight = nil
-        log.set1Reps = nil
-        log.set2Weight = nil
-        log.set2Reps = nil
-        log.set3Weight = nil
-        log.set3Reps = nil
-        log.set4Weight = nil
-        log.set4Reps = nil
+        // Clear all sets first (set to default values)
+        log.set1Weight = 0.0
+        log.set1Reps = 0
+        log.set2Weight = 0.0
+        log.set2Reps = 0
+        log.set3Weight = 0.0
+        log.set3Reps = 0
+        log.set4Weight = 0.0
+        log.set4Reps = 0
         
         // Set the provided data
         for (index, set) in setsToUpdate.enumerated() {
             switch index {
             case 0:
-                log.set1Weight = set.weight
-                log.set1Reps = set.reps
+                log.set1Weight = set.weight ?? 0.0
+                log.set1Reps = set.reps ?? 0
             case 1:
-                log.set2Weight = set.weight
-                log.set2Reps = set.reps
+                log.set2Weight = set.weight ?? 0.0
+                log.set2Reps = set.reps ?? 0
             case 2:
-                log.set3Weight = set.weight
-                log.set3Reps = set.reps
+                log.set3Weight = set.weight ?? 0.0
+                log.set3Reps = set.reps ?? 0
             case 3:
-                log.set4Weight = set.weight
-                log.set4Reps = set.reps
+                log.set4Weight = set.weight ?? 0.0
+                log.set4Reps = set.reps ?? 0
             default:
                 break
             }

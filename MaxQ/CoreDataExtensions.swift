@@ -25,31 +25,31 @@ extension Exercise {
     func updateRecommendedSets(from sets: [SetData]) {
         let setsToUpdate = Array(sets.prefix(4)) // Ensure max 4 sets
         
-        // Clear all sets first
-        recSet1Weight = nil
-        recSet1Reps = nil
-        recSet2Weight = nil
-        recSet2Reps = nil
-        recSet3Weight = nil
-        recSet3Reps = nil
-        recSet4Weight = nil
-        recSet4Reps = nil
+        // Clear all sets first (set to default values)
+        recSet1Weight = 0.0
+        recSet1Reps = 0
+        recSet2Weight = 0.0
+        recSet2Reps = 0
+        recSet3Weight = 0.0
+        recSet3Reps = 0
+        recSet4Weight = 0.0
+        recSet4Reps = 0
         
         // Set the provided data
         for (index, set) in setsToUpdate.enumerated() {
             switch index {
             case 0:
-                recSet1Weight = set.weight
-                recSet1Reps = set.reps
+                recSet1Weight = set.weight ?? 0.0
+                recSet1Reps = set.reps ?? 0
             case 1:
-                recSet2Weight = set.weight
-                recSet2Reps = set.reps
+                recSet2Weight = set.weight ?? 0.0
+                recSet2Reps = set.reps ?? 0
             case 2:
-                recSet3Weight = set.weight
-                recSet3Reps = set.reps
+                recSet3Weight = set.weight ?? 0.0
+                recSet3Reps = set.reps ?? 0
             case 3:
-                recSet4Weight = set.weight
-                recSet4Reps = set.reps
+                recSet4Weight = set.weight ?? 0.0
+                recSet4Reps = set.reps ?? 0
             default:
                 break
             }
@@ -88,31 +88,31 @@ extension ExerciseLog {
     func updateSets(from sets: [SetData]) {
         let setsToUpdate = Array(sets.prefix(4)) // Ensure max 4 sets
         
-        // Clear all sets first
-        set1Weight = nil
-        set1Reps = nil
-        set2Weight = nil
-        set2Reps = nil
-        set3Weight = nil
-        set3Reps = nil
-        set4Weight = nil
-        set4Reps = nil
+        // Clear all sets first (set to default values)
+        set1Weight = 0.0
+        set1Reps = 0
+        set2Weight = 0.0
+        set2Reps = 0
+        set3Weight = 0.0
+        set3Reps = 0
+        set4Weight = 0.0
+        set4Reps = 0
         
         // Set the provided data
         for (index, set) in setsToUpdate.enumerated() {
             switch index {
             case 0:
-                set1Weight = set.weight
-                set1Reps = set.reps
+                set1Weight = set.weight ?? 0.0
+                set1Reps = set.reps ?? 0
             case 1:
-                set2Weight = set.weight
-                set2Reps = set.reps
+                set2Weight = set.weight ?? 0.0
+                set2Reps = set.reps ?? 0
             case 2:
-                set3Weight = set.weight
-                set3Reps = set.reps
+                set3Weight = set.weight ?? 0.0
+                set3Reps = set.reps ?? 0
             case 3:
-                set4Weight = set.weight
-                set4Reps = set.reps
+                set4Weight = set.weight ?? 0.0
+                set4Reps = set.reps ?? 0
             default:
                 break
             }

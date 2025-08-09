@@ -47,7 +47,9 @@ class CoreDataManager {
     private let inMemory: Bool
     
     private init(inMemory: Bool = false) {
-        self.inMemory = inMemory
+        // Allow UI tests to force in-memory store for isolation and speed
+        let uiTestInMemory = ProcessInfo.processInfo.arguments.contains("-uiTestInMemory")
+        self.inMemory = inMemory || uiTestInMemory
     }
     
     var viewContext: NSManagedObjectContext {

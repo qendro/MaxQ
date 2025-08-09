@@ -260,20 +260,20 @@ class SeedDataManager {
         let sets = data.recommendedSets
         
         if sets.count > 0 {
-            exercise.recSet1Weight = sets[0].weight
-            exercise.recSet1Reps = sets[0].reps
+            exercise.recSet1Weight = sets[0].weight ?? 0.0
+            exercise.recSet1Reps = sets[0].reps ?? 0
         }
         if sets.count > 1 {
-            exercise.recSet2Weight = sets[1].weight
-            exercise.recSet2Reps = sets[1].reps
+            exercise.recSet2Weight = sets[1].weight ?? 0.0
+            exercise.recSet2Reps = sets[1].reps ?? 0
         }
         if sets.count > 2 {
-            exercise.recSet3Weight = sets[2].weight
-            exercise.recSet3Reps = sets[2].reps
+            exercise.recSet3Weight = sets[2].weight ?? 0.0
+            exercise.recSet3Reps = sets[2].reps ?? 0
         }
         if sets.count > 3 {
-            exercise.recSet4Weight = sets[3].weight
-            exercise.recSet4Reps = sets[3].reps
+            exercise.recSet4Weight = sets[3].weight ?? 0.0
+            exercise.recSet4Reps = sets[3].reps ?? 0
         }
         
         print("    Created exercise: \(data.name) (baseline)")

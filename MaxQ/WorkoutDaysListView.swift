@@ -9,6 +9,7 @@ import SwiftUI
 
 /// Home screen displaying the list of workout days
 struct WorkoutDaysListView: View {
+    @Environment(\.editMode) private var editMode
     @StateObject private var viewModel = HomeViewModel()
     @State private var showingAddDay = false
     @State private var newDayName = ""
@@ -34,6 +35,9 @@ struct WorkoutDaysListView: View {
                     if !viewModel.workoutDays.isEmpty {
                         Button(viewModel.isEditMode ? "Done" : "Edit") {
                             viewModel.toggleEditMode()
+                            withAnimation {
+                                editMode?.wrappedValue = viewModel.isEditMode ? .active : .inactive
+                            }
                         }
                     }
                 }
@@ -44,6 +48,7 @@ struct WorkoutDaysListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("addDayButton")
                 }
             }
             .undoSupport(viewModel.undoManager)
@@ -66,6 +71,7 @@ struct WorkoutDaysListView: View {
                 viewModel.fetchActiveDays()
             }
         }
+        .dynamicTypeSize(.large ... .accessibility3)
     }
     
     // MARK: - Subviews
@@ -74,7 +80,7 @@ struct WorkoutDaysListView: View {
         VStack(spacing: 24) {
             Image(systemName: "dumbbell")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(.secondaryLabel))
             
             VStack(spacing: 8) {
                 Text("No Workout Days")
@@ -83,7 +89,7 @@ struct WorkoutDaysListView: View {
                 
                 Text("Add your first workout day to get started")
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                     .multilineTextAlignment(.center)
             }
             
@@ -104,18 +110,37 @@ struct WorkoutDaysListView: View {
     private var workoutDaysList: some View {
         List {
             ForEach(viewModel.workoutDays, id: \.id) { day in
-                WorkoutDayRow(
-                    day: day,
-                    exerciseCount: viewModel.getExerciseCount(for: day),
-                    isEditMode: viewModel.isEditMode,
-                    onEdit: { editingDay = day; editingDayName = day.name ?? "" },
-                    onDelete: { viewModel.deleteDay(day) }
-                )
+                if viewModel.isEditMode {
+                    WorkoutDayRow(
+                        day: day,
+                        exerciseCount: viewModel.getExerciseCount(for: day),
+                        isEditMode: true,
+                        onEdit: { editingDay = day; editingDayName = day.name ?? "" },
+                        onDelete: { viewModel.deleteDay(day) }
+                    )
+                } else {
+                    NavigationLink(destination: DayDetailView(day: day)) {
+                        WorkoutDayRow(
+                            day: day,
+                            exerciseCount: viewModel.getExerciseCount(for: day),
+                            isEditMode: false,
+                            onEdit: { },
+                            onDelete: { }
+                        )
+                    }
+                }
             }
-            .onMove(perform: viewModel.isEditMode ? viewModel.reorderDays : nil)
+            .onMove(perform: { indices, newOffset in
+                if viewModel.isEditMode {
+                    viewModel.reorderDays(from: indices, to: newOffset)
+                }
+            })
+            .moveDisabled(!viewModel.isEditMode)
         }
         .listStyle(.insetGrouped)
-        .environment(\.editMode, .constant(viewModel.isEditMode ? .active : .inactive))
+        .listRowSeparatorTint(Color(.separator))
+        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+
     }
     
     private var addDaySheet: some View {
@@ -136,6 +161,7 @@ struct WorkoutDaysListView: View {
                         .onSubmit {
                             addDay()
                         }
+                        .accessibilityIdentifier("addDayTextField")
                 }
                 
                 Spacer()
@@ -155,6 +181,7 @@ struct WorkoutDaysListView: View {
                         addDay()
                     }
                     .disabled(newDayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("confirmAddDayButton")
                 }
             }
         }
@@ -241,7 +268,7 @@ struct WorkoutDayRow: View {
                 
                 Text("\(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
             }
             
             Spacer()
@@ -255,6 +282,7 @@ struct WorkoutDayRow: View {
                             .font(.body)
                             .foregroundColor(.blue)
                     }
+                    .accessibilityLabel("Rename \(day.name ?? "day")")
                     .buttonStyle(.plain)
                     
                     Button {
@@ -264,21 +292,19 @@ struct WorkoutDayRow: View {
                             .font(.body)
                             .foregroundColor(.red)
                     }
+                    .accessibilityLabel("Delete \(day.name ?? "day")")
                     .buttonStyle(.plain)
                 }
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            if !isEditMode {
-                // TODO: Navigate to Day Detail screen
-                print("Navigate to day detail for: \(day.name ?? "Unknown")")
-            }
-        }
+        .frame(minHeight: 56)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("")
+        .accessibilityValue({
+            let name = day.name ?? "Unknown Day"
+            return "\(name), \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")"
+        }())
     }
 }
 

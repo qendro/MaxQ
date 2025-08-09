@@ -10,7 +10,14 @@ import CoreData
 
 struct ContentView: View {
     var body: some View {
-        WorkoutDaysListView()
+        TabView {
+            WorkoutDaysListView()
+                .tabItem { Label("Home", systemImage: "list.bullet") }
+            ProgressViewScreen()
+                .tabItem { Label("Progress", systemImage: "chart.bar.fill") }
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+        }
     }
 }
 
