@@ -1,31 +1,33 @@
 //
-//  WorkoutDaysListView.swift
+//  EnhancedWorkoutDaysListView.swift
 //  MaxQ
 //
-//  Created by Kiro on 8/8/25.
+//  Enhanced home screen with premium visual design
 //
 
 import SwiftUI
 
-/// Home screen displaying the list of workout days
-struct WorkoutDaysListView: View {
+struct EnhancedWorkoutDaysListView: View {
     @Environment(\.editMode) private var editMode
     @StateObject private var viewModel = HomeViewModel()
     @State private var showingAddDay = false
     @State private var newDayName = ""
     @State private var editingDay: WorkoutDay?
     @State private var editingDayName = ""
+    @Namespace private var animationNamespace
     
     var body: some View {
         NavigationStack {
             ZStack {
+                // Background gradient
+                DS.bg.ignoresSafeArea()
+                
                 if viewModel.isLoading {
-                    ProgressView("Loading workout days...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    loadingState
                 } else if viewModel.workoutDays.isEmpty {
-                    emptyStateView
+                    enhancedEmptyState
                 } else {
-                    workoutDaysList
+                    enhancedWorkoutDaysList
                 }
             }
             .navigationTitle("Workout Days")
@@ -54,24 +56,22 @@ struct WorkoutDaysListView: View {
                             .font(.title3.weight(.medium))
                             .foregroundColor(DS.brand)
                     }
+                    .iconStyle(size: 32)
                     .accessibilityIdentifier("addDayButton")
                 }
             }
-            .undoSupport(viewModel.undoManager)
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") {
-                    viewModel.clearError()
-                }
+                Button("OK") { viewModel.clearError() }
             } message: {
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                 }
             }
             .sheet(isPresented: $showingAddDay) {
-                addDaySheet
+                enhancedAddDaySheet
             }
             .sheet(item: $editingDay) { day in
-                editDaySheet(day: day)
+                enhancedEditDaySheet(day: day)
             }
             .onAppear {
                 viewModel.fetchActiveDays()
@@ -80,9 +80,19 @@ struct WorkoutDaysListView: View {
         .dynamicTypeSize(.large ... .accessibility3)
     }
     
-    // MARK: - Subviews
+    // MARK: - Enhanced Views
     
-    private var emptyStateView: some View {
+    private var loadingState: some View {
+        VStack(spacing: DS.Spacing.lg) {
+            LoadingDots()
+            Text("Loading workout days...")
+                .font(DS.Typography.body)
+                .foregroundColor(DS.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var enhancedEmptyState: some View {
         EmptyStateView(
             icon: "dumbbell.fill",
             title: "Ready to Lift?",
@@ -94,46 +104,34 @@ struct WorkoutDaysListView: View {
         }
     }
     
-    private var workoutDaysList: some View {
+    private var enhancedWorkoutDaysList: some View {
         ScrollView {
             LazyVStack(spacing: DS.Spacing.md) {
                 ForEach(viewModel.workoutDays, id: \.id) { day in
-                    Group {
-                        if viewModel.isEditMode {
-                            WorkoutDayRow(
-                                day: day,
-                                exerciseCount: viewModel.getExerciseCount(for: day),
-                                isEditMode: true,
-                                onEdit: { 
-                                    editingDay = day
-                                    editingDayName = day.name ?? ""
-                                },
-                                onDelete: { 
-                                    withAnimation(DS.Animation.smooth) {
-                                        viewModel.deleteDay(day)
-                                    }
-                                }
-                            )
-                        } else {
-                            NavigationLink(destination: DayDetailView(day: day)) {
-                                WorkoutDayRow(
-                                    day: day,
-                                    exerciseCount: viewModel.getExerciseCount(for: day),
-                                    isEditMode: false,
-                                    onEdit: { },
-                                    onDelete: { }
-                                )
+                    EnhancedWorkoutDayCard(
+                        day: day,
+                        exerciseCount: viewModel.getExerciseCount(for: day),
+                        isEditMode: viewModel.isEditMode,
+                        namespace: animationNamespace,
+                        onEdit: { 
+                            editingDay = day
+                            editingDayName = day.name ?? ""
+                            Haptics.select()
+                        },
+                        onDelete: { 
+                            withAnimation(DS.Animation.smooth) {
+                                viewModel.deleteDay(day)
                             }
-                            .buttonStyle(.plain)
+                            Haptics.success()
                         }
-                    }
+                    )
                     .transition(.asymmetric(
                         insertion: .scale.combined(with: .opacity),
                         removal: .scale.combined(with: .opacity)
                     ))
                 }
                 
-                // Add Workout Day Button (inline)
+                // Add Exercise Button (inline)
                 if !viewModel.isEditMode {
                     Button {
                         showingAddDay = true
@@ -168,7 +166,7 @@ struct WorkoutDaysListView: View {
         .animation(DS.Animation.bouncy, value: viewModel.isEditMode)
     }
     
-    private var addDaySheet: some View {
+    private var enhancedAddDaySheet: some View {
         NavigationStack {
             VStack(spacing: DS.Spacing.xxl) {
                 VStack(spacing: DS.Spacing.lg) {
@@ -206,7 +204,6 @@ struct WorkoutDaysListView: View {
                 Button("Add Workout Day", action: addDay)
                     .primaryStyle()
                     .disabled(newDayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityIdentifier("confirmAddDayButton")
             }
             .padding(DS.Spacing.xxl)
             .navigationBarTitleDisplayMode(.inline)
@@ -224,7 +221,7 @@ struct WorkoutDaysListView: View {
         .presentationDragIndicator(.visible)
     }
     
-    private func editDaySheet(day: WorkoutDay) -> some View {
+    private func enhancedEditDaySheet(day: WorkoutDay) -> some View {
         NavigationStack {
             VStack(spacing: DS.Spacing.xxl) {
                 VStack(spacing: DS.Spacing.lg) {
@@ -298,34 +295,58 @@ struct WorkoutDaysListView: View {
     }
 }
 
-// MARK: - Workout Day Row
+// MARK: - Enhanced Workout Day Card
 
-struct WorkoutDayRow: View {
+struct EnhancedWorkoutDayCard: View {
     let day: WorkoutDay
     let exerciseCount: Int
     let isEditMode: Bool
+    let namespace: Namespace.ID
     let onEdit: () -> Void
     let onDelete: () -> Void
     
     @State private var isPressed = false
     
     var body: some View {
+        Group {
+            if isEditMode {
+                editModeContent
+            } else {
+                NavigationLink(destination: DayDetailView(day: day)) {
+                    cardContent
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .animation(DS.Animation.quick, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0) {
+            // Empty perform - just for the pressing animation
+        } onPressingChanged: { pressing in
+            isPressed = pressing
+        }
+    }
+    
+    private var cardContent: some View {
         HStack(spacing: DS.Spacing.lg) {
             // Day Icon
-            Image(systemName: "dumbbell.fill")
-                .font(.title2)
-                .foregroundColor(isEditMode ? DS.textSecondary : DS.brand)
-                .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(isEditMode ? DS.textSecondary.opacity(0.1) : DS.brand.opacity(0.1))
-                )
+            VStack {
+                Image(systemName: "dumbbell.fill")
+                    .font(.title2)
+                    .foregroundColor(DS.brand)
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Circle()
+                            .fill(DS.brand.opacity(0.1))
+                    )
+            }
             
             // Day Info
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(day.name ?? "Unknown Day")
                     .font(DS.Typography.headline)
                     .foregroundColor(DS.text)
+                    .matchedGeometryEffect(id: "\(day.objectID)-title", in: namespace)
                 
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "list.bullet")
@@ -340,66 +361,81 @@ struct WorkoutDayRow: View {
             
             Spacer()
             
-            if isEditMode {
-                HStack(spacing: DS.Spacing.md) {
-                    Button(action: {
-                        onEdit()
-                        Haptics.select()
-                    }) {
-                        Image(systemName: "pencil")
-                            .font(.callout.weight(.medium))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(DS.brand))
-                    }
-                    .accessibilityLabel("Edit \(day.name ?? "day")")
-                    
-                    Button(action: {
-                        onDelete()
-                        Haptics.success()
-                    }) {
-                        Image(systemName: "trash")
-                            .font(.callout.weight(.medium))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(DS.error))
-                    }
-                    .accessibilityLabel("Delete \(day.name ?? "day")")
+            // Chevron
+            Image(systemName: "chevron.right")
+                .font(.callout.weight(.medium))
+                .foregroundColor(DS.textTertiary)
+        }
+        .padding(DS.Spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: DS.Corner.lg, style: .continuous)
+                .fill(DS.cardGradient)
+                .shadow(color: DS.Shadow.card, radius: 2, y: 1)
+        )
+    }
+    
+    private var editModeContent: some View {
+        HStack(spacing: DS.Spacing.lg) {
+            // Day Icon (dimmed in edit mode)
+            Image(systemName: "dumbbell.fill")
+                .font(.title2)
+                .foregroundColor(DS.textSecondary)
+                .frame(width: 48, height: 48)
+                .background(
+                    Circle()
+                        .fill(DS.textSecondary.opacity(0.1))
+                )
+            
+            // Day Info
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text(day.name ?? "Unknown Day")
+                    .font(DS.Typography.headline)
+                    .foregroundColor(DS.text)
+                
+                Text("\(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")")
+                    .font(DS.Typography.caption)
+                    .foregroundColor(DS.textSecondary)
+            }
+            
+            Spacer()
+            
+            // Edit Actions
+            HStack(spacing: DS.Spacing.md) {
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.callout.weight(.medium))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(DS.brand)
+                        )
                 }
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.callout.weight(.medium))
-                    .foregroundColor(DS.textTertiary)
+                .accessibilityLabel("Edit \(day.name ?? "day")")
+                
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.callout.weight(.medium))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(DS.error)
+                        )
+                }
+                .accessibilityLabel("Delete \(day.name ?? "day")")
             }
         }
         .padding(DS.Spacing.lg)
         .background(
             RoundedRectangle(cornerRadius: DS.Corner.lg, style: .continuous)
-                .fill(isEditMode ? AnyShapeStyle(DS.card) : AnyShapeStyle(DS.cardGradient))
-                .stroke(isEditMode ? DS.separator.opacity(0.3) : Color.clear, lineWidth: 1)
-                .shadow(color: isEditMode ? Color.clear : DS.Shadow.card, radius: 2, y: 1)
+                .fill(DS.card)
+                .stroke(DS.separator.opacity(0.3), lineWidth: 1)
         )
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(DS.Animation.quick, value: isPressed)
-        .if(isEditMode) { view in
-            view.onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, perform: {
-                // Handle tap in edit mode
-            }, onPressingChanged: { pressing in
-                isPressed = pressing
-            })
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityValue({
-            let name = day.name ?? "Unknown Day"
-            return "\(name), \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")"
-        }())
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    WorkoutDaysListView()
+    EnhancedWorkoutDaysListView()
         .environment(\.managedObjectContext, CoreDataManager.preview.viewContext)
 }

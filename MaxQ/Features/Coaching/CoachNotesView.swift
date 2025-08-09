@@ -34,7 +34,7 @@ struct CoachNotesView: View {
                         
                         Text(summary)
                             .font(DS.Typography.body)
-                            .foregroundColor(DS.subtle)
+                            .foregroundColor(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .cardStyle()
@@ -44,7 +44,7 @@ struct CoachNotesView: View {
                             .scaleEffect(0.8)
                         Text("Analyzing your session...")
                             .font(DS.Typography.body)
-                            .foregroundColor(DS.subtle)
+                            .foregroundColor(DS.textSecondary)
                     }
                     .cardStyle()
                 }
@@ -58,7 +58,7 @@ struct CoachNotesView: View {
                         
                         Text(warmup)
                             .font(DS.Typography.body)
-                            .foregroundColor(DS.subtle)
+                            .foregroundColor(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .cardStyle()
@@ -71,7 +71,7 @@ struct CoachNotesView: View {
                             .foregroundColor(.orange)
                         Text("Insights temporarily unavailable")
                             .font(DS.Typography.body)
-                            .foregroundColor(DS.subtle)
+                            .foregroundColor(DS.textSecondary)
                     }
                     .cardStyle()
                 }

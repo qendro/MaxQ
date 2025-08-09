@@ -53,7 +53,7 @@ public struct LLMCompletion: Identifiable, Codable, Sendable {
 }
 
 /// Types of LLM completions we store
-public enum CompletionType: String, Codable, CaseIterable {
+public enum CompletionType: String, Codable, CaseIterable, Sendable {
     case warmupSuggestion = "warmup"
     case sessionSummary = "summary"
     case progressAnalysis = "progress"

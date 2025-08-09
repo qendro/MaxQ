@@ -31,7 +31,7 @@ struct WeeklyVolumeChart: View {
             
             if points.isEmpty {
                 Text("No workout data yet")
-                    .foregroundColor(DS.subtle)
+                    .foregroundColor(DS.textSecondary)
                     .frame(height: 180)
                     .frame(maxWidth: .infinity)
             } else {
