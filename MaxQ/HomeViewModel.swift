@@ -46,10 +46,13 @@ class HomeViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        let days = repository.fetchActiveDays(for: program)
-        workoutDays = days
-        
-        isLoading = false
+        Task {
+            let days = await repository.fetchActiveDays(for: program)
+            await MainActor.run {
+                workoutDays = days
+                isLoading = false
+            }
+        }
     }
     
     /// Creates a new workout day
@@ -66,8 +69,10 @@ class HomeViewModel: ObservableObject {
             return
         }
         
-        let newDay = repository.createDay(name: cleanedName, program: program)
-        fetchActiveDays() // Refresh the list
+        Task {
+            let newDay = await repository.createDay(name: cleanedName, program: program)
+            fetchActiveDays() // Refresh the list
+        }
     }
     
     /// Renames an existing workout day
@@ -82,8 +87,10 @@ class HomeViewModel: ObservableObject {
         }
         
         day.name = cleanedName
-        repository.updateDay(day)
-        fetchActiveDays() // Refresh the list
+        Task {
+            await repository.updateDay(day)
+            fetchActiveDays() // Refresh the list
+        }
     }
     
     /// Soft deletes a workout day with 5-second undo functionality
@@ -93,12 +100,14 @@ class HomeViewModel: ObservableObject {
         let dayToRestore = day
         
         // Perform the soft delete immediately
-        repository.softDeleteDay(day)
-        fetchActiveDays() // Refresh the list
-        
-        // Show undo option
-        undoManager.showUndo(message: "Deleted \"\(dayName)\"") { [weak self] in
-            self?.restoreDay(dayToRestore)
+        Task {
+            await repository.softDeleteDay(day)
+            fetchActiveDays() // Refresh the list
+            
+            // Show undo option
+            undoManager.showUndo(message: "Deleted \"\(dayName)\"") { [weak self] in
+                self?.restoreDay(dayToRestore)
+            }
         }
     }
     
@@ -106,8 +115,10 @@ class HomeViewModel: ObservableObject {
     /// - Parameter day: The workout day to restore
     private func restoreDay(_ day: WorkoutDay) {
         day.isActive = true
-        repository.updateDay(day)
-        fetchActiveDays() // Refresh the list
+        Task {
+            await repository.updateDay(day)
+            fetchActiveDays() // Refresh the list
+        }
     }
     
     /// Reorders workout days using drag and drop
@@ -124,10 +135,14 @@ class HomeViewModel: ObservableObject {
         }
         
         // Save all changes
-        for day in updatedDays {
-            repository.updateDay(day)
+        Task {
+            for day in updatedDays {
+                await repository.updateDay(day)
+            }
+            await MainActor.run {
+                workoutDays = updatedDays
+            }
         }
-        workoutDays = updatedDays
     }
     
     /// Toggles edit mode for the day list
@@ -144,7 +159,9 @@ class HomeViewModel: ObservableObject {
     /// - Parameter day: The workout day
     /// - Returns: The number of exercises in the day
     func getExerciseCount(for day: WorkoutDay) -> Int {
-        return repository.fetchExercisesForDay(day).count
+        // For now, return a default value since we don't have cached exercise data
+        // This could be enhanced later with proper caching
+        return 0
     }
     
     /// Clears any error message
@@ -156,30 +173,38 @@ class HomeViewModel: ObservableObject {
     
     /// Ensures seed data is available
     private func ensureSeedData() {
-        let seedManager = SeedDataManager(context: CoreDataManager.shared.viewContext)
+        let seedManager = SeedDataManager(context: Database.shared.viewContext)
         seedManager.seedIfNeeded()
     }
     
     /// Loads the active program from UserDefaults or sets a default
     private func loadActiveProgram() {
-        // Try to load from UserDefaults first
-        if let savedProgramId = UserDefaults.standard.string(forKey: "activeProgram"),
-           let programId = UUID(uuidString: savedProgramId),
-           let savedProgram = repository.fetchProgram(by: programId) {
-            activeProgram = savedProgram
-        } else {
-            // Fall back to first available program
-            let programs = repository.fetchPrograms()
-            activeProgram = programs.first
-            
-            // Save the default selection
-            if let program = activeProgram, let programId = program.id {
-                UserDefaults.standard.set(programId.uuidString, forKey: "activeProgram")
+        Task {
+            // Try to load from UserDefaults first
+            if let savedProgramId = UserDefaults.standard.string(forKey: "activeProgram"),
+               let programId = UUID(uuidString: savedProgramId),
+               let savedProgram = await repository.fetchProgram(by: programId) {
+                await MainActor.run {
+                    activeProgram = savedProgram
+                }
+            } else {
+                // Fall back to first available program
+                let programs = await repository.fetchPrograms()
+                await MainActor.run {
+                    activeProgram = programs.first
+                    
+                    // Save the default selection
+                    if let program = activeProgram, let programId = program.id {
+                        UserDefaults.standard.set(programId.uuidString, forKey: "activeProgram")
+                    }
+                }
             }
-        }
-        
-        if activeProgram == nil {
-            errorMessage = "No programs available. Please check seed data."
+            
+            await MainActor.run {
+                if activeProgram == nil {
+                    errorMessage = "No programs available. Please check seed data."
+                }
+            }
         }
     }
     

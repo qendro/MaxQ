@@ -29,6 +29,7 @@ class DayDetailViewModel: ObservableObject {
     
     @Published var exercises: [Exercise] = []
     @Published var todaysSetsByExerciseId: [UUID: [SetData]] = [:]
+    @Published var historicalDataByExerciseId: [UUID: [HistoricalEntry]] = [:]
     @Published var focusedCell: FocusedCell?
     @Published var errorMessage: String?
     @Published var invalidInputs: Set<FocusedCell> = []
@@ -68,30 +69,42 @@ class DayDetailViewModel: ObservableObject {
     // MARK: - Loading
     
     func loadExercises() {
-        exercises = repository.fetchExercisesForDay(day)
-        // Preload today's sets map using today's log if available, otherwise recommended
-        var map: [UUID: [SetData]] = [:]
-        for exercise in exercises {
-            let id = exercise.id ?? UUID()
-            if let log = repository.fetchTodaysLog(for: exercise) {
-                map[id] = [
-                    SetData(weight: log.set1Weight, reps: log.set1Reps),
-                    SetData(weight: log.set2Weight, reps: log.set2Reps),
-                    SetData(weight: log.set3Weight, reps: log.set3Reps),
-                    SetData(weight: log.set4Weight, reps: log.set4Reps)
-                ]
-            } else {
-                map[id] = exercise.recommendedSetsArray
+        Task {
+            exercises = await repository.fetchExercisesForDay(day)
+            // Preload today's sets map using today's log if available, otherwise recommended
+            var setsMap: [UUID: [SetData]] = [:]
+            var historyMap: [UUID: [HistoricalEntry]] = [:]
+            
+            for exercise in exercises {
+                let id = exercise.id ?? UUID()
+                if let log = await repository.fetchTodaysLog(for: exercise) {
+                    setsMap[id] = [
+                        SetData(weight: log.set1Weight, reps: log.set1Reps),
+                        SetData(weight: log.set2Weight, reps: log.set2Reps),
+                        SetData(weight: log.set3Weight, reps: log.set3Reps),
+                        SetData(weight: log.set4Weight, reps: log.set4Reps)
+                    ]
+                } else {
+                    setsMap[id] = exercise.recommendedSetsArray
+                }
+                
+                // Load historical data
+                let logs = await repository.fetchRecentLogs(for: exercise, excludingToday: true, limit: 3)
+                historyMap[id] = logs.map { HistoricalEntry(from: $0) }
             }
+            
+            todaysSetsByExerciseId = setsMap
+            historicalDataByExerciseId = historyMap
         }
-        todaysSetsByExerciseId = map
     }
     
     // MARK: - Accessors
     
     func displayModel(for exercise: Exercise) -> ExerciseDisplayModel {
-        let log = repository.fetchTodaysLog(for: exercise)
-        return ExerciseDisplayModel(from: exercise, todaysLog: log)
+        // Use cached data instead of async call for View compatibility
+        let id = exercise.id ?? UUID()
+        let todaysSets = todaysSetsByExerciseId[id] ?? exercise.recommendedSetsArray
+        return ExerciseDisplayModel(from: exercise, todaysSets: todaysSets)
     }
     
     func todaysSets(for exercise: Exercise) -> [SetData] {
@@ -101,8 +114,9 @@ class DayDetailViewModel: ObservableObject {
     
     /// Returns last 3 historical entries (excluding today unless a log exists for today which is handled separately)
     func lastThreeWeeks(for exercise: Exercise) -> [HistoricalEntry] {
-        let logs = repository.fetchRecentLogs(for: exercise, excludingToday: true, limit: 3)
-        return logs.map { HistoricalEntry(from: $0) }
+        // Use cached data instead of async call for View compatibility
+        let id = exercise.id ?? UUID()
+        return historicalDataByExerciseId[id] ?? []
     }
     
     // MARK: - Editing & Validation
@@ -148,9 +162,11 @@ class DayDetailViewModel: ObservableObject {
         let sets = todaysSetsByExerciseId[id] ?? exercise.recommendedSetsArray
         // Transform to repository tuple format
         let tuples: [(Double?, Int16?)] = sets.map { ($0.weight, $0.reps) }
-        _ = repository.createOrUpdateTodaysLog(for: exercise, sets: tuples)
-        // Refresh so computed state reflects saved values
-        loadExercises()
+        Task {
+            _ = await repository.createOrUpdateTodaysLog(for: exercise, sets: tuples)
+            // Refresh so computed state reflects saved values
+            loadExercises()
+        }
     }
     
     // MARK: - Exercise Management
@@ -161,11 +177,13 @@ class DayDetailViewModel: ObservableObject {
             errorMessage = "Exercise name cannot be empty"
             return
         }
-        let newExercise = repository.createExercise(name: cleaned, day: day, isBaseline: false)
-        // Initialize today's sets with recommended (which are empty by default)
-        let id = newExercise.id ?? UUID()
-        todaysSetsByExerciseId[id] = newExercise.recommendedSetsArray
-        loadExercises()
+        Task {
+            let newExercise = await repository.createExercise(name: cleaned, day: day, isBaseline: false)
+            // Initialize today's sets with recommended (which are empty by default)
+            let id = newExercise.id ?? UUID()
+            todaysSetsByExerciseId[id] = newExercise.recommendedSetsArray
+            loadExercises()
+        }
     }
     
     func deleteExercise(_ exercise: Exercise) {
@@ -177,27 +195,33 @@ class DayDetailViewModel: ObservableObject {
         let recSets = exercise.recommendedSetsArray
         let exerciseId = exercise.id
         
-        repository.deleteExercise(exercise)
-        loadExercises()
-        
-        undoManager.showUndo(message: "Deleted \"\(exerciseName)\"") { [weak self] in
-            guard let self = self else { return }
-            // Recreate exercise
-            let restored = self.repository.createExercise(name: exerciseName, day: dayRef, isBaseline: isBaseline)
-            restored.order = order
-            restored.updateRecommendedSets(from: recSets)
-            if let restoredId = exerciseId {
-                restored.id = restoredId
+        Task {
+            await repository.deleteExercise(exercise)
+            loadExercises()
+            
+            undoManager.showUndo(message: "Deleted \"\(exerciseName)\"") { [weak self] in
+                guard let self = self else { return }
+                Task {
+                    // Recreate exercise
+                    let restored = await self.repository.createExercise(name: exerciseName, day: dayRef, isBaseline: isBaseline)
+                    restored.order = order
+                    restored.updateRecommendedSets(from: recSets)
+                    if let restoredId = exerciseId {
+                        restored.id = restoredId
+                    }
+                    await self.repository.updateExercise(restored)
+                    await self.loadExercises()
+                }
             }
-            self.repository.updateExercise(restored)
-            self.loadExercises()
         }
     }
     
     func updateRecommendedFromToday(for exercise: Exercise) {
-        exercise.updateRecommendedFromToday(using: repository)
-        repository.updateExercise(exercise)
-        loadExercises()
+        Task {
+            await exercise.updateRecommendedFromToday(using: repository)
+            await repository.updateExercise(exercise)
+            loadExercises()
+        }
     }
 }
 

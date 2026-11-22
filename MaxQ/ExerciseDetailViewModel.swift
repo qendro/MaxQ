@@ -33,26 +33,32 @@ class ExerciseDetailViewModel: ObservableObject {
     // MARK: - Loading
     func load() {
         errorMessage = nil
-        loadTodaysSets()
-        loadHistory()
-    }
-    
-    private func loadTodaysSets() {
-        if let log = repository.fetchTodaysLog(for: exercise) {
-            todaysSets = [
-                SetData(weight: log.set1Weight, reps: log.set1Reps),
-                SetData(weight: log.set2Weight, reps: log.set2Reps),
-                SetData(weight: log.set3Weight, reps: log.set3Reps),
-                SetData(weight: log.set4Weight, reps: log.set4Reps)
-            ]
-        } else {
-            todaysSets = exercise.recommendedSetsArray
+        Task {
+            await loadTodaysSets()
+            await loadHistory()
         }
     }
     
-    private func loadHistory() {
-        let hasTodayLog = repository.fetchTodaysLog(for: exercise) != nil
-        let logs = repository.fetchRecentLogs(for: exercise, excludingToday: !hasTodayLog, limit: 10)
+    private func loadTodaysSets() async {
+        if let log = await repository.fetchTodaysLog(for: exercise) {
+            await MainActor.run {
+                todaysSets = [
+                    SetData(weight: log.set1Weight, reps: log.set1Reps),
+                    SetData(weight: log.set2Weight, reps: log.set2Reps),
+                    SetData(weight: log.set3Weight, reps: log.set3Reps),
+                    SetData(weight: log.set4Weight, reps: log.set4Reps)
+                ]
+            }
+        } else {
+            await MainActor.run {
+                todaysSets = exercise.recommendedSetsArray
+            }
+        }
+    }
+    
+    private func loadHistory() async {
+        let hasTodayLog = await repository.fetchTodaysLog(for: exercise) != nil
+        let logs = await repository.fetchRecentLogs(for: exercise, excludingToday: !hasTodayLog, limit: 10)
         // Group by date and take the 3 most recent distinct days
         let grouped = Dictionary(grouping: logs) { (log: ExerciseLog) in
             log.dateNormalizedToLocalMidnight ?? Date.distantPast
@@ -64,7 +70,9 @@ class ExerciseDetailViewModel: ObservableObject {
                 entries.append(HistoricalEntry(from: anyLog))
             }
         }
-        history = entries
+        await MainActor.run {
+            history = entries
+        }
     }
     
     // MARK: - Editing Today's Sets
@@ -94,10 +102,12 @@ class ExerciseDetailViewModel: ObservableObject {
     
     func commitTodaysSets() {
         let tuples: [(Double?, Int16?)] = todaysSets.map { ($0.weight, $0.reps) }
-        _ = repository.createOrUpdateTodaysLog(for: exercise, sets: tuples)
-        // refresh today's state and history so UI reflects saved values
-        loadTodaysSets()
-        loadHistory()
+        Task {
+            _ = await repository.createOrUpdateTodaysLog(for: exercise, sets: tuples)
+            // refresh today's state and history so UI reflects saved values
+            await loadTodaysSets()
+            await loadHistory()
+        }
     }
     
     // MARK: - Exercise Name Editing
@@ -109,16 +119,20 @@ class ExerciseDetailViewModel: ObservableObject {
         }
         exercise.name = cleaned
         exerciseName = cleaned
-        repository.updateExercise(exercise)
+        Task {
+            await repository.updateExercise(exercise)
+        }
     }
     
     // MARK: - Recommended Template
     func updateRecommendedFromToday() {
-        exercise.updateRecommendedFromToday(using: repository)
-        repository.updateExercise(exercise)
-        // reload today's default template only if there is no log; otherwise keep today's edited values
-        if repository.fetchTodaysLog(for: exercise) == nil {
-            loadTodaysSets()
+        Task {
+            await exercise.updateRecommendedFromToday(using: repository)
+            await repository.updateExercise(exercise)
+            // reload today's default template only if there is no log; otherwise keep today's edited values
+            if await repository.fetchTodaysLog(for: exercise) == nil {
+                await loadTodaysSets()
+            }
         }
     }
 }

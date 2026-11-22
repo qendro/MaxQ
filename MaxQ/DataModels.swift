@@ -67,6 +67,23 @@ struct ExerciseDisplayModel {
             self.todaysSets = recommendedSets
         }
     }
+    
+    init(from exercise: Exercise, todaysSets: [SetData]) {
+        self.id = exercise.id ?? UUID()
+        self.name = exercise.name ?? ""
+        self.isBaseline = exercise.isBaseline
+        
+        // Extract recommended sets
+        self.recommendedSets = [
+            SetData(weight: exercise.recSet1Weight, reps: exercise.recSet1Reps),
+            SetData(weight: exercise.recSet2Weight, reps: exercise.recSet2Reps),
+            SetData(weight: exercise.recSet3Weight, reps: exercise.recSet3Reps),
+            SetData(weight: exercise.recSet4Weight, reps: exercise.recSet4Reps)
+        ]
+        
+        // Use provided today's sets
+        self.todaysSets = todaysSets
+    }
 }
 
 // MARK: - Historical Entry Model

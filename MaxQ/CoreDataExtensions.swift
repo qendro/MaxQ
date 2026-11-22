@@ -57,8 +57,8 @@ extension Exercise {
     }
     
     /// Updates recommended sets from today's values (for "Update Recommended from Today" functionality)
-    func updateRecommendedFromToday(using repository: WorkoutRepositoryProtocol) {
-        guard let todaysLog = repository.fetchTodaysLog(for: self) else { return }
+    func updateRecommendedFromToday(using repository: WorkoutRepositoryProtocol) async {
+        guard let todaysLog = await repository.fetchTodaysLog(for: self) else { return }
         
         let todaysSets = [
             SetData(weight: todaysLog.set1Weight, reps: todaysLog.set1Reps),

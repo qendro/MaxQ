@@ -168,7 +168,7 @@ struct SeedData {
 class SeedDataManager {
     private let context: NSManagedObjectContext
     
-    init(context: NSManagedObjectContext = CoreDataManager.shared.viewContext) {
+    init(context: NSManagedObjectContext = Database.shared.viewContext) {
         self.context = context
     }
     

@@ -11,7 +11,7 @@ import CoreData
 /// Log screen displaying workout history in editable text format
 struct LogView: View {
     @Environment(\.managedObjectContext) private var context
-    @StateObject private var viewModel: LogViewModel = LogViewModel(context: CoreDataManager.shared.viewContext)
+    @StateObject private var viewModel: LogViewModel = LogViewModel(context: Database.shared.viewContext)
     
     var body: some View {
         NavigationStack {

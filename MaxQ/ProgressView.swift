@@ -1,5 +1,88 @@
 import SwiftUI
 
+// MARK: - Metric Card Component
+
+struct MetricCard: View {
+    let value: Int
+    let unit: String
+    let label: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: DS.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(color.opacity(0.1))
+                )
+            
+            VStack(spacing: DS.Spacing.xs) {
+                HStack(alignment: .lastTextBaseline, spacing: 2) {
+                    Text("\(value)")
+                        .font(DS.Typography.numbersLarge)
+                        .foregroundColor(DS.text)
+                    
+                    Text(unit)
+                        .font(DS.Typography.caption)
+                        .foregroundColor(DS.textSecondary)
+                }
+                
+                Text(label)
+                    .font(DS.Typography.caption)
+                    .foregroundColor(DS.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(DS.Spacing.md)
+        .background(DS.card)
+        .cornerRadius(DS.Corner.md)
+    }
+}
+
+// MARK: - PR Row Component
+
+struct PRRow: View {
+    let exercise: String
+    let weight: Int
+    let reps: Int
+    let rank: Int
+    
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            // Rank badge
+            Text("\(rank)")
+                .font(DS.Typography.numbers)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(rank == 1 ? .yellow : rank == 2 ? .gray : .brown)
+                )
+            
+            // Exercise name
+            Text(exercise)
+                .font(DS.Typography.body)
+                .foregroundColor(DS.text)
+                .lineLimit(1)
+            
+            Spacer()
+            
+            // Weight and reps
+            Text("\(weight) × \(reps)")
+                .font(DS.Typography.numbers)
+                .foregroundColor(DS.textSecondary)
+        }
+        .padding(DS.Spacing.sm)
+        .background(DS.card)
+        .cornerRadius(DS.Corner.sm)
+    }
+}
+
 struct ProgressViewScreen: View {
     @StateObject private var viewModel = ProgressViewModel()
     @State private var animateMetrics = false
